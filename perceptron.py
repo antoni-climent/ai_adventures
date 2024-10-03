@@ -1,37 +1,12 @@
-
-from graphviz import Digraph
-
-def trace(root):
-    nodes, edges = set(), set()
-    def build(v):
-        if v not in nodes:
-            nodes.add(v)
-            if isinstance(v, Value):
-                for child in v._prev:
-                    edges.add((child, v))
-                    build(child)
-    build(root)
-    return nodes, edges
-
-def draw_dot(root):
-    dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'})
-
-    nodes, edges = trace(root)
-    for n in nodes:
-        uid = str(id(n))
-        dot.node(uid, label="{ data %.4f}" % (n.data, ), shape='record')
-        if n._op:
-            dot.node(name = uid + n._op, label=n._op)
-            dot.edge(uid + n._op, uid)
-    for n1, n2 in edges:
-        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
-    return dot
-
-
 import math
 import random
 
 class Value:
+    """ Value is a class that represents a value in the computation graph of the neural network.
+    It has a data attribute that stores the value of the node, a grad attribute that stores the gradient,
+    a _prev attribute that stores the children of the node, a _op attribute that stores the operation that
+    the node is performing and a _backward attribute that stores the backward function of the node.
+    """
     def __init__(self, data, _children=(), _op='', label = ''):
         self.data = data
         self._prev = _children
@@ -51,8 +26,9 @@ class Value:
 
         def _backward():
             self.grad += out.grad
+
             other.grad += out.grad
-        self._backward = _backward
+        out._backward = _backward
         return out
 
     def __neg__(self):
@@ -71,16 +47,18 @@ class Value:
         def _backward():
             self.grad += other.data * out.grad
             other.grad += self.data * out.grad
-        self._backward = _backward
+        out._backward = _backward
+
         return out
 
     def __pow__(self, other):
-        assert isinstance(other, (int, float))
-        out = Value(self.data**other, (self, other), f'**{other}')
+        # assert isinstance(other, (int, float))
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data**other.data, (self, other), f'**{other.data}')
 
         def _backward():
-            self.grad += other*self.data**(other-1) * out.grad
-        self._backward = _backward
+            self.grad += other.data*self.data**(other.data-1) * out.grad
+        out._backward = _backward
 
         return out
 
@@ -95,7 +73,8 @@ class Value:
 
         def _backward():
             self.grad += (1 - out.data**2) * out.grad
-        self._backward = _backward
+        out._backward = _backward
+
         return out
     
     def relu(self):
@@ -115,122 +94,121 @@ class Value:
         def _backward():
             self.grad += out.data * out.grad
 
-        self._backward = _backward
+        out._backward = _backward
 
         return out
 
-    def backprop(self):
+    def backward(self):
         # Topo sort
         topo = []
         visited = set()
         def build_topo(v):
-            print(f'Node: {v}, type: {type(v)}')
-            if isinstance(v, Value) and v not in visited:
+            if not isinstance(v, Value):
+                v = Value(v)
+            if v not in visited:
                 visited.add(v)
                 for child in v._prev:
                     build_topo(child)
                 topo.append(v)
         build_topo(self)
+        
         self.grad = 1
 
-        # def build_topo(v):
-        #     if isinstance(v, Value):
-        #         if v not in visited:
-        #             visited.add(v)
-        #             for child in v._prev:
-        #                 build_topo(child)
-        #             topo.append(v)
-            # else:
-            #     print(f'Node {v} has been skiped from build_topo, as has type {type(v)}')
-        
-        print(f'Topo: {topo}')
         for self in reversed(topo):
             self._backward()
 
-        # for self in reversed(topo):
-        #     print(f'Label: {self._label}, value: {self.data}, grad: {self.grad}')
-
     def zero_grad(self):
-        if not self._prev:
-            return 
-        
         self.grad = 0
         for node in self._prev:
-            try:
-                node.zero_grad()
-            except:
-                pass
-                # print(f'Node {node}, with type {type(node)} is not a Value')
+            node.zero_grad()
 
 class Perceptron():
     def __init__(self, n):
         self.w = []
         for _ in range(n):
             self.w.append(Value(random.uniform(-1,1))) 
-
         self.b = Value(random.uniform(-1,1))
 
     def __call__(self, input):
         input = [Value(input[i]) for i in range(len(input))]
-        s = self.b # Add the bias
+        s = Value(0)
+        
         for w, x in zip(self.w, input):
             s += w*x
+        s += self.b # Add the bias
         f = s.tanh() # Apply relu non linearity
-
         return f
 
     def parameters(self):
         return self.w + [self.b]
     
 
+from graphviz import Digraph
+
+def trace(root):
+    nodes, edges = set(), set()
+    def build(v):
+        if not isinstance(v, Value):
+            v = Value(v)
+        if v not in nodes:
+            nodes.add(v)
+            for child in v._prev:
+                edges.add((child, v))
+                build(child)
+    build(root)
+    return nodes, edges
+
+def draw_dot(root):
+    dot = Digraph(format='svg', graph_attr={'rankdir': 'LR'})
+
+    nodes, edges = trace(root)
+    for n in nodes:
+        uid = str(id(n))
+        dot.node(uid, label="{ data %.4f}" % (n.data, ), shape='record')
+        if n._op:
+            dot.node(name = uid + n._op, label=n._op)
+            dot.edge(uid + n._op, uid)
+    for n1, n2 in edges:
+        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
+    return dot
+
+def train_model(model, X_train, y_train, lr=0.01, epochs=100):
+    # loss_values = []
+    for _ in range(epochs):
+        for x_sample, y_sample in zip(X_train, y_train):
+            pred = model(x_sample)
+            L = (pred - y_sample)**2.0
+            L.zero_grad()
+            L.backward()
+
+            pars = model.parameters()
+            for p in pars:
+                p.data += -lr*p.grad
+            # loss_values.append(L.data)
+
+def evaluate_model(model, X_test, y_test):
+    for x_sample, y_sample in zip(X_test, y_test):
+        res = model(x_sample)
+        print(f'Input: {x_sample}, Target: {y_sample}, Prediction: {res.data}')
 
 if __name__ == '__main__':
+    # Model initialization
+    per = Perceptron(2)
 
-    a = Value(2)
-    b = Value(3)
-    c = Value(4)
-    d = a*b + c
-
-    draw_dot(d)
-    """per = Perceptron(2)
-    # AND gate data
+    # Random Data to fit
     X = [[0.,0.],
         [0.,1.],
         [1.,0.],
         [1.,1.]]
     y = [0,0,1,1]
 
+    # Training the model
+    train_model(per, X, y, lr=0.1, epochs=100000)
 
-    for i in range(1):
-        x_sample, y_sample = X[i%4], y[i%4]
-        # print(f'Input: {x_sample}, Target: {y_sample}')
-        pred = per(x_sample)
-        L = (pred - y_sample)**2
-        L.zero_grad()
-        print(type(L))
-        draw_dot(L)
-        # L.grad = 1
-        L.backprop()
+    # Evaluating the model
+    evaluate_model(per, X, y)
 
-        pars = per.parameters()
-        for pa in pars:
-            print(pa.grad)
-        for p in pars:
-            p.data += -0.00001*p.grad
-        
-        
+    
 
-        # print(L.data)
-        # print(per.w)
-
-    X = [[0.,0.],
-        [0.,1.],
-        [1.,0.],
-        [1.,1.]]
-    y = [0,0,1,1]
-
-    for sample in X:
-        print(per.forward(sample))
-    print(y)"""
 
 
