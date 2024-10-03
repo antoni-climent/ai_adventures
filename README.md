@@ -12,6 +12,11 @@ It implements all the automatic computation of the gradients for any given archi
 Also, it defines the Perceptron class, which is a simple perceptron with a tanh activation function. It is trained using the backpropagation algorithm and the dataset generated from the logic expression $AB + A\overline{B}$.
 
 
+### Gradient Descent
+
+This project contains the optimization of two functions, $$f(x) =  x² + y²$$ and $$f(x)=sin(1/2 * x^2 - 1/4 * y^2 + 3) * cos(2*x + 1 - e^y)$$
+
+The optimization is done using the gradient descent algorithm, where the gradients are computed by specifying directly the partial derivatives of each term of the function.
     
 
 
