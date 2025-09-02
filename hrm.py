@@ -51,9 +51,9 @@ def get_data_batch(batch_size=64, device="cuda"):
     # n1 = torch.tensor([7,1], device=device)
     # n2 = torch.tensor([4,5], device=device)
     # s = torch.tensor([11,6], device=device)
-    n1 = torch.tensor([7], device=device)
-    n2 = torch.tensor([4], device=device)
-    s = torch.tensor([11], device=device)
+    # n1 = torch.tensor([7], device=device)
+    # n2 = torch.tensor([4], device=device)
+    # s = torch.tensor([11], device=device)
 
     shift8 = torch.arange(7, -1, -1, device=device, dtype=torch.int16)
     shift9 = torch.arange(8, -1, -1, device=device, dtype=torch.int16)
@@ -158,19 +158,19 @@ class HRM(nn.Module):
 if __name__ == "__main__":
 
     # Hiperparameter definition
-    model_name = "hrm_3.pth"
+    model_name = "hrm_model.pth"
     d_model = 512
-    batch_size = 2
-    nhead = 32
+    batch_size = 512
+    nhead = 8
     num_layers = 8
     out_size = 9
-    N = 30
-    T = 10
+    N = 2
+    T = 2
     n_supervision = 4
     input_size = 16
     device = "cuda"
-    is_training = False
-    num_samples = 20
+    is_training = True
+    num_samples = 3000
     torch.manual_seed(42)
 
     # Choose between training and inference
