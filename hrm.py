@@ -48,6 +48,13 @@ def get_data_batch(batch_size=64, device="cuda"):
     n2 = torch.randint(0, 256, (batch_size,), device=device, dtype=torch.int16)
     s = n1 + n2
 
+    # n1 = torch.tensor([7,1], device=device)
+    # n2 = torch.tensor([4,5], device=device)
+    # s = torch.tensor([11,6], device=device)
+    n1 = torch.tensor([7], device=device)
+    n2 = torch.tensor([4], device=device)
+    s = torch.tensor([11], device=device)
+
     shift8 = torch.arange(7, -1, -1, device=device, dtype=torch.int16)
     shift9 = torch.arange(8, -1, -1, device=device, dtype=torch.int16)
 
@@ -153,7 +160,7 @@ if __name__ == "__main__":
     # Hiperparameter definition
     model_name = "hrm_3.pth"
     d_model = 512
-    batch_size = 256
+    batch_size = 2
     nhead = 32
     num_layers = 8
     out_size = 9
@@ -162,8 +169,8 @@ if __name__ == "__main__":
     n_supervision = 4
     input_size = 16
     device = "cuda"
-    is_training = True
-    num_samples = 100
+    is_training = False
+    num_samples = 20
     torch.manual_seed(42)
 
     # Choose between training and inference
