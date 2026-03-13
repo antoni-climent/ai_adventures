@@ -105,9 +105,6 @@ class HRM(nn.Module):
  
         with torch.no_grad(): 
             for _i in range(N * T - 1):
-                a = final_emb.shape 
-                b = zH.shape
-                c = zL.shape
                 inputL = final_emb + zH + zL
                 # print("inputL: ", inputL.size())
                 zL = self.moduleL(inputL)
